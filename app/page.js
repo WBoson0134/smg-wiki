@@ -11,6 +11,7 @@ export default function Home() {
   const [sortBy, setSortBy] = useState('date'); // date, name, random
   const [layoutMode, setLayoutMode] = useState('masonry'); // masonry, grid, list
   const [imageErrors, setImageErrors] = useState(new Set());
+  const [isScrolled, setIsScrolled] = useState(false);
 
   const handleImageError = (imageSrc) => {
     setImageErrors(prev => new Set([...prev, imageSrc]));
@@ -50,6 +51,17 @@ export default function Home() {
     setFilteredTitles(processedTitles);
     setIsLoading(false);
   }, [processedTitles]);
+
+  // 监听滚动事件
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollTop = window.scrollY;
+      setIsScrolled(scrollTop > 100);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // 瀑布流布局
   const MasonryLayout = ({ items }) => (
@@ -187,27 +199,45 @@ export default function Home() {
 
       {/* 主要内容 */}
       <div className="relative z-10">
-        {/* 头部 */}
-        <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-200">
-          <div className="max-w-7xl mx-auto px-4 py-6">
-            {/* 标题 */}
-            <div className="text-center mb-8">
-              <h1 className="text-5xl md:text-7xl font-black mb-4">
-                <span className="bg-gradient-to-r from-purple-600 via-blue-600 to-purple-600 bg-clip-text text-transparent bg-size-200 animate-gradient">
-                  司马光Wiki
-                </span>
-              </h1>
-              <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
-                探索传奇人物的精彩称号宇宙 • 每个名字背后都有一个故事
-              </p>
-            </div>
+        {/* 大标题区域 - 始终显示 */}
+        <div className="text-center pt-16 pb-8 px-4">
+          <h1 className="text-4xl md:text-6xl lg:text-7xl font-black mb-4">
+            <span className="bg-gradient-to-r from-purple-600 via-blue-600 to-purple-600 bg-clip-text text-transparent bg-size-200 animate-gradient">
+              司马光Wiki
+            </span>
+          </h1>
+          <p className="text-lg md:text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
+            探索传奇人物的精彩称号宇宙 • 每个名字背后都有一个故事
+          </p>
+        </div>
+
+        {/* 头部导航栏 - 滚动时变为紧凑模式 */}
+        <header className={`sticky top-0 z-50 transition-all duration-300 ${
+          isScrolled 
+            ? 'bg-white/95 backdrop-blur-lg border-b border-gray-200 shadow-lg py-2' 
+            : 'bg-white/80 backdrop-blur-md border-b border-gray-200 py-4'
+        }`}>
+          <div className="max-w-7xl mx-auto px-4">
+            {/* 紧凑模式下的标题 */}
+            {isScrolled && (
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-xl md:text-2xl font-bold">
+                  <span className="bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                    司马光Wiki
+                  </span>
+                </h2>
+                <div className="text-sm text-gray-600 hidden md:block">
+                  共 <span className="font-bold text-purple-600">{filteredTitles.length}</span> 个称号
+                </div>
+              </div>
+            )}
 
             {/* 搜索和控制栏 */}
-            <div className="max-w-4xl mx-auto space-y-4">
+            <div className="max-w-4xl mx-auto space-y-3">
               {/* 搜索框 */}
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <svg className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className="absolute inset-y-0 left-0 pl-3 md:pl-4 flex items-center pointer-events-none">
+                  <svg className="h-5 w-5 md:h-6 md:w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
                 </div>
@@ -216,14 +246,16 @@ export default function Home() {
                   placeholder="搜索称号或描述..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-12 pr-4 py-4 text-lg border-2 border-gray-200 rounded-2xl focus:border-purple-500 focus:outline-none transition-all duration-300 bg-white/90 backdrop-blur-sm shadow-lg"
+                  className={`w-full pl-10 md:pl-12 pr-3 md:pr-4 text-base md:text-lg border-2 border-gray-200 rounded-xl md:rounded-2xl focus:border-purple-500 focus:outline-none transition-all duration-300 bg-white/90 backdrop-blur-sm shadow-md ${
+                    isScrolled ? 'py-2 md:py-3' : 'py-3 md:py-4'
+                  }`}
                 />
                 {searchQuery && (
                   <button
                     onClick={() => setSearchQuery('')}
-                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600"
+                    className="absolute inset-y-0 right-0 pr-3 md:pr-4 flex items-center text-gray-400 hover:text-gray-600"
                   >
-                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="h-4 w-4 md:h-5 md:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
@@ -231,11 +263,11 @@ export default function Home() {
               </div>
 
               {/* 控制按钮 */}
-              <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                 {/* 排序选项 */}
                 <div className="flex items-center space-x-2">
-                  <span className="text-sm font-medium text-gray-700">排序:</span>
-                  <div className="flex bg-gray-100 rounded-xl p-1">
+                  <span className="text-xs md:text-sm font-medium text-gray-700 whitespace-nowrap">排序:</span>
+                  <div className="flex bg-gray-100 rounded-lg md:rounded-xl p-1">
                     {[
                       { value: 'date', label: '时间', icon: '📅' },
                       { value: 'name', label: '名称', icon: '🔤' },
@@ -244,14 +276,14 @@ export default function Home() {
                       <button
                         key={value}
                         onClick={() => setSortBy(value)}
-                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center space-x-1 ${
+                        className={`px-2 md:px-3 py-1.5 md:py-2 rounded-md md:rounded-lg text-xs md:text-sm font-medium transition-all duration-200 flex items-center space-x-1 ${
                           sortBy === value
                             ? 'bg-white text-purple-600 shadow-md'
                             : 'text-gray-600 hover:text-purple-600'
                         }`}
                       >
-                        <span>{icon}</span>
-                        <span>{label}</span>
+                        <span className="text-xs md:text-sm">{icon}</span>
+                        <span className="hidden sm:inline">{label}</span>
                       </button>
                     ))}
                   </div>
@@ -259,8 +291,8 @@ export default function Home() {
 
                 {/* 布局选项 */}
                 <div className="flex items-center space-x-2">
-                  <span className="text-sm font-medium text-gray-700">布局:</span>
-                  <div className="flex bg-gray-100 rounded-xl p-1">
+                  <span className="text-xs md:text-sm font-medium text-gray-700 whitespace-nowrap">布局:</span>
+                  <div className="flex bg-gray-100 rounded-lg md:rounded-xl p-1">
                     {[
                       { value: 'masonry', label: '瀑布流', icon: '⚏' },
                       { value: 'grid', label: '网格', icon: '⊞' },
@@ -269,27 +301,29 @@ export default function Home() {
                       <button
                         key={value}
                         onClick={() => setLayoutMode(value)}
-                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center space-x-1 ${
+                        className={`px-2 md:px-3 py-1.5 md:py-2 rounded-md md:rounded-lg text-xs md:text-sm font-medium transition-all duration-200 flex items-center space-x-1 ${
                           layoutMode === value
                             ? 'bg-white text-purple-600 shadow-md'
                             : 'text-gray-600 hover:text-purple-600'
                         }`}
                       >
-                        <span>{icon}</span>
-                        <span>{label}</span>
+                        <span className="text-xs md:text-sm">{icon}</span>
+                        <span className="hidden sm:inline">{label}</span>
                       </button>
                     ))}
                   </div>
                 </div>
               </div>
 
-              {/* 结果计数 */}
-              <div className="text-center">
-                <p className="text-gray-600">
-                  {searchQuery ? '找到' : '共有'} <span className="font-bold text-purple-600">{filteredTitles.length}</span> 个称号
-                  {searchQuery && <span className="ml-2 text-gray-400">关键词: &ldquo;{searchQuery}&rdquo;</span>}
-                </p>
-              </div>
+              {/* 结果计数 - 只在展开模式下显示 */}
+              {!isScrolled && (
+                <div className="text-center pt-2">
+                  <p className="text-sm md:text-base text-gray-600">
+                    {searchQuery ? '找到' : '共有'} <span className="font-bold text-purple-600">{filteredTitles.length}</span> 个称号
+                    {searchQuery && <span className="ml-2 text-gray-400">关键词: &ldquo;{searchQuery}&rdquo;</span>}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </header>
