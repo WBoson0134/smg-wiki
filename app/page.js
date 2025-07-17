@@ -98,7 +98,7 @@ export default function Home() {
   const GridLayout = ({ items }) => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
       {items.map(([title, data], index) => (
-        <a
+        <Link
           key={title}
           href={`/title/${encodeURIComponent(title)}`}
           className="group bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 overflow-hidden border border-gray-100 h-fit animate-fadeInUp"
@@ -130,7 +130,7 @@ export default function Home() {
               {data.description}
             </p>
           </div>
-        </a>
+        </Link>
       ))}
     </div>
   );
@@ -139,7 +139,7 @@ export default function Home() {
   const ListLayout = ({ items }) => (
     <div className="space-y-4">
       {items.map(([title, data], index) => (
-        <a
+        <Link
           key={title}
           href={`/title/${encodeURIComponent(title)}`}
           className="group flex bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 animate-fadeInUp"
@@ -171,7 +171,7 @@ export default function Home() {
               </span>
             </div>
           </div>
-        </a>
+        </Link>
       ))}
     </div>
   );
@@ -287,7 +287,7 @@ export default function Home() {
               <div className="text-center">
                 <p className="text-gray-600">
                   {searchQuery ? '找到' : '共有'} <span className="font-bold text-purple-600">{filteredTitles.length}</span> 个称号
-                  {searchQuery && <span className="ml-2 text-gray-400">关键词: "{searchQuery}"</span>}
+                  {searchQuery && <span className="ml-2 text-gray-400">关键词: &ldquo;{searchQuery}&rdquo;</span>}
                 </p>
               </div>
             </div>

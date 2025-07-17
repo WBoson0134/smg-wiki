@@ -61,12 +61,12 @@ export default function TitlePage({ params }) {
           <div className="text-6xl mb-4">🤔</div>
           <h1 className="text-2xl font-bold text-gray-800 mb-4">未找到该称号</h1>
           <p className="text-gray-600 mb-6">这个称号暂时没有记录：{decodedName}</p>
-          <a
+          <Link
             href="/"
             className="inline-block bg-purple-500 text-white px-6 py-3 rounded-xl hover:bg-purple-600 transition-colors shadow-lg"
           >
             返回首页
-          </a>
+          </Link>
         </div>
       </div>
     );
