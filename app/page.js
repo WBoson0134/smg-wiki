@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { titleData, searchTitles, getTitlesByDate } from '../data/titleData';
 
@@ -14,9 +14,29 @@ export default function Home() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [searchSuggestions, setSearchSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [showBackToTop, setShowBackToTop] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [imageLoadingStates, setImageLoadingStates] = useState(new Set());
 
   const handleImageError = (imageSrc) => {
     setImageErrors(prev => new Set([...prev, imageSrc]));
+    setImageLoadingStates(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(imageSrc);
+      return newSet;
+    });
+  };
+
+  const handleImageLoad = (imageSrc) => {
+    setImageLoadingStates(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(imageSrc);
+      return newSet;
+    });
+  };
+
+  const handleImageLoadStart = (imageSrc) => {
+    setImageLoadingStates(prev => new Set([...prev, imageSrc]));
   };
 
   const formatDate = (dateString) => {
@@ -59,27 +79,125 @@ export default function Home() {
     const handleScroll = () => {
       const scrollTop = window.scrollY;
       setIsScrolled(scrollTop > 100);
+      setShowBackToTop(scrollTop > 500);
     };
 
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    // 使用 requestAnimationFrame 优化滚动性能
+    let ticking = false;
+    const optimizedHandleScroll = () => {
+      if (!ticking) {
+        requestAnimationFrame(() => {
+          handleScroll();
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    window.addEventListener('scroll', optimizedHandleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', optimizedHandleScroll);
   }, []);
 
-  // 搜索建议
+  // 搜索建议 - 添加防抖
   useEffect(() => {
-    if (searchQuery.length > 0) {
-      const suggestions = Object.keys(titleData)
-        .filter(title => title.toLowerCase().includes(searchQuery.toLowerCase()))
-        .slice(0, 5);
-      setSearchSuggestions(suggestions);
-      setShowSuggestions(suggestions.length > 0 && searchQuery.length > 1);
-    } else {
-      setSearchSuggestions([]);
-      setShowSuggestions(false);
-    }
+    const timeoutId = setTimeout(() => {
+      if (searchQuery.length > 0) {
+        const suggestions = Object.keys(titleData)
+          .filter(title => title.toLowerCase().includes(searchQuery.toLowerCase()))
+          .slice(0, 5);
+        setSearchSuggestions(suggestions);
+        setShowSuggestions(suggestions.length > 0 && searchQuery.length > 1);
+      } else {
+        setSearchSuggestions([]);
+        setShowSuggestions(false);
+      }
+    }, 300); // 300ms 防抖
+
+    return () => clearTimeout(timeoutId);
   }, [searchQuery]);
 
-  // 骨架屏组件
+  // 键盘快捷键
+  useEffect(() => {
+    const handleKeyPress = (e) => {
+      // Ctrl/Cmd + K 聚焦搜索框
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        document.querySelector('input[placeholder*="搜索"]')?.focus();
+      }
+      // ESC 清空搜索
+      if (e.key === 'Escape') {
+        setSearchQuery('');
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyPress);
+    return () => document.removeEventListener('keydown', handleKeyPress);
+  }, []);
+
+  // 返回顶部函数
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // 懒加载图片组件
+  const LazyImage = ({ src, alt, className, onError, onLoad }) => {
+    const [isLoaded, setIsLoaded] = useState(false);
+    const [isInView, setIsInView] = useState(false);
+    const imgRef = useRef();
+
+    useEffect(() => {
+      const observer = new IntersectionObserver(
+        ([entry]) => {
+          if (entry.isIntersecting) {
+            setIsInView(true);
+            observer.disconnect();
+          }
+        },
+        { threshold: 0.1 }
+      );
+
+      if (imgRef.current) {
+        observer.observe(imgRef.current);
+      }
+
+      return () => observer.disconnect();
+    }, []);
+
+    const handleLoad = () => {
+      setIsLoaded(true);
+      onLoad?.(src);
+    };
+
+    const handleError = () => {
+      setIsLoaded(true);
+      onError?.(src);
+    };
+
+    return (
+      <div ref={imgRef} className={`relative ${className}`}>
+        {isInView && (
+          <>
+            {!isLoaded && (
+              <div className="absolute inset-0 bg-gray-200 animate-pulse flex items-center justify-center">
+                <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+            )}
+            <img
+              src={src}
+              alt={alt}
+              className={`${className} transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
+              onLoad={handleLoad}
+              onError={handleError}
+              loading="lazy"
+            />
+          </>
+        )}
+      </div>
+    );
+  };
   const SkeletonCard = () => (
     <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100 animate-pulse">
       <div className="h-48 bg-gray-200"></div>
@@ -105,11 +223,12 @@ export default function Home() {
         >
           {data.image && !imageErrors.has(data.image) && (
             <div className="relative overflow-hidden">
-              <img
+              <LazyImage
                 src={data.image}
                 alt={title}
                 className="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-500"
                 onError={() => handleImageError(data.image)}
+                onLoad={() => handleImageLoad(data.image)}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
               <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm rounded-full p-2 opacity-0 group-hover:opacity-100 transition-all duration-300">
@@ -286,7 +405,7 @@ export default function Home() {
                 </div>
                 <input
                   type="text"
-                  placeholder="搜索称号或描述..."
+                  placeholder="搜索称号或描述... (Ctrl+K)"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onFocus={() => setShowSuggestions(searchSuggestions.length > 0)}
@@ -473,6 +592,19 @@ export default function Home() {
           )}
         </main>
 
+        {/* 返回顶部按钮 */}
+        {showBackToTop && (
+          <button
+            onClick={scrollToTop}
+            className="fixed bottom-8 right-8 z-40 bg-purple-600 hover:bg-purple-700 text-white p-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-110"
+            aria-label="返回顶部"
+          >
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+            </svg>
+          </button>
+        )}
+
         {/* 页脚 */}
         <footer className="bg-gray-900 text-white py-12 mt-16">
           <div className="max-w-7xl mx-auto px-4 text-center">
@@ -480,6 +612,21 @@ export default function Home() {
               <h3 className="text-2xl font-bold mb-2">司马光Wiki</h3>
               <p className="text-gray-400">记录每一个精彩瞬间</p>
             </div>
+            
+            {/* 快捷键提示 */}
+            <div className="mb-6 flex flex-wrap justify-center gap-4 text-sm">
+              <div className="flex items-center space-x-2 bg-gray-800 px-3 py-2 rounded-lg">
+                <kbd className="px-2 py-1 text-xs bg-gray-700 rounded">Ctrl</kbd>
+                <span>+</span>
+                <kbd className="px-2 py-1 text-xs bg-gray-700 rounded">K</kbd>
+                <span className="text-gray-400">聚焦搜索</span>
+              </div>
+              <div className="flex items-center space-x-2 bg-gray-800 px-3 py-2 rounded-lg">
+                <kbd className="px-2 py-1 text-xs bg-gray-700 rounded">ESC</kbd>
+                <span className="text-gray-400">清空搜索</span>
+              </div>
+            </div>
+            
             <div className="text-gray-500">
               © 2025 • 共收录 {Object.keys(titleData).length} 个称号 • 持续更新中
             </div>
