@@ -9,11 +9,6 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [sortBy, setSortBy] = useState('date'); // date, name, random
   const [layoutMode, setLayoutMode] = useState('masonry'); // masonry, grid, list
-  const [imageErrors, setImageErrors] = useState(new Set());
-
-  const handleImageError = (imageSrc) => {
-    setImageErrors(prev => new Set([...prev, imageSrc]));
-  };
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('zh-CN', {
@@ -59,13 +54,15 @@ export default function Home() {
           className="break-inside-avoid bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-1 overflow-hidden border border-gray-100 animate-fadeInUp"
           style={{ animationDelay: `${index * 50}ms` }}
         >
-          {data.image && !imageErrors.has(data.image) && (
+          {data.image && (
             <div className="relative overflow-hidden">
               <img
                 src={data.image}
                 alt={title}
                 className="w-full h-auto object-cover hover:scale-105 transition-transform duration-500"
-                onError={() => handleImageError(data.image)}
+                onError={(e) => {
+                  e.target.parentElement.style.display = 'none';
+                }}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300" />
             </div>
@@ -103,13 +100,15 @@ export default function Home() {
           className="group bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 overflow-hidden border border-gray-100 h-fit animate-fadeInUp"
           style={{ animationDelay: `${index * 50}ms` }}
         >
-          {data.image && !imageErrors.has(data.image) && (
+          {data.image && (
             <div className="aspect-video overflow-hidden bg-gray-100">
               <img
                 src={data.image}
                 alt={title}
                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                onError={() => handleImageError(data.image)}
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                }}
               />
             </div>
           )}
@@ -144,13 +143,15 @@ export default function Home() {
           className="group flex bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 animate-fadeInUp"
           style={{ animationDelay: `${index * 30}ms` }}
         >
-          {data.image && !imageErrors.has(data.image) && (
+          {data.image && (
             <div className="w-24 h-24 md:w-32 md:h-32 flex-shrink-0 overflow-hidden bg-gray-100">
               <img
                 src={data.image}
                 alt={title}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                onError={() => handleImageError(data.image)}
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                }}
               />
             </div>
           )}
