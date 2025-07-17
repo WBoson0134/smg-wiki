@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import Link from 'next/link';
 import { titleData, searchTitles, getTitlesByDate } from '../data/titleData';
 
 export default function Home() {
@@ -78,7 +79,7 @@ export default function Home() {
               </span>
             </div>
             
-            <a href={`/title/${encodeURIComponent(title)}`} className="block group">
+            <Link href={`/title/${encodeURIComponent(title)}`} className="block group">
               <h3 className="font-bold text-lg text-gray-800 mb-3 group-hover:text-purple-600 transition-colors line-clamp-2">
                 {title}
               </h3>
@@ -86,7 +87,7 @@ export default function Home() {
               <p className="text-gray-600 text-sm leading-relaxed line-clamp-4">
                 {data.description}
               </p>
-            </a>
+            </Link>
           </div>
         </div>
       ))}

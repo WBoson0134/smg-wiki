@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { titleData } from '../../../data/titleData';
 
 export default function TitlePage({ params }) {
@@ -91,7 +92,7 @@ export default function TitlePage({ params }) {
       <header className="relative z-10 bg-white/80 backdrop-blur-md shadow-lg">
         <div className="max-w-4xl mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
-            <a
+            <Link
               href="/"
               className="flex items-center space-x-3 text-purple-600 hover:text-purple-800 transition-colors group"
             >
@@ -101,7 +102,7 @@ export default function TitlePage({ params }) {
                 </svg>
               </div>
               <span className="font-medium">返回首页</span>
-            </a>
+            </Link>
             <div className="text-center">
               <h1 className="text-xl lg:text-2xl font-bold">
                 <span className="bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
@@ -174,7 +175,7 @@ export default function TitlePage({ params }) {
 
             {/* 操作按钮 */}
             <div className="flex flex-col sm:flex-row gap-3">
-              <a
+              <Link
                 href="/"
                 className="flex-1 bg-purple-500 text-white px-6 py-3 rounded-lg font-medium text-center hover:bg-purple-600 transition-colors flex items-center justify-center space-x-2"
               >
@@ -182,7 +183,7 @@ export default function TitlePage({ params }) {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                 </svg>
                 <span>返回首页</span>
-              </a>
+              </Link>
               <button
                 onClick={() => window.history.back()}
                 className="flex-1 bg-gray-500 text-white px-6 py-3 rounded-lg font-medium text-center hover:bg-gray-600 transition-colors flex items-center justify-center space-x-2"
