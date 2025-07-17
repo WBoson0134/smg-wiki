@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { titleData } from '../../../data/titleData';
 
@@ -10,6 +10,11 @@ export default function TitlePage({ params }) {
   const [decodedName, setDecodedName] = useState('');
   const [info, setInfo] = useState(null);
   const [showImagePreview, setShowImagePreview] = useState(false);
+  const [imagePosition, setImagePosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [imageScale, setImageScale] = useState(1);
+  const imageRef = useRef();
 
   useEffect(() => {
     const resolveParams = async () => {
@@ -35,6 +40,9 @@ export default function TitlePage({ params }) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = 'unset';
+      // 重置图片位置和缩放
+      setImagePosition({ x: 0, y: 0 });
+      setImageScale(1);
     }
     
     return () => {
@@ -42,6 +50,93 @@ export default function TitlePage({ params }) {
       document.body.style.overflow = 'unset';
     };
   }, [showImagePreview]);
+
+  // 处理鼠标拖动
+  const handleMouseDown = (e) => {
+    if (e.target === imageRef.current) {
+      setIsDragging(true);
+      setDragStart({
+        x: e.clientX - imagePosition.x,
+        y: e.clientY - imagePosition.y
+      });
+      e.preventDefault();
+    }
+  };
+
+  const handleMouseMove = (e) => {
+    if (isDragging) {
+      setImagePosition({
+        x: e.clientX - dragStart.x,
+        y: e.clientY - dragStart.y
+      });
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  // 处理触摸拖动
+  const handleTouchStart = (e) => {
+    if (e.target === imageRef.current && e.touches.length === 1) {
+      setIsDragging(true);
+      const touch = e.touches[0];
+      setDragStart({
+        x: touch.clientX - imagePosition.x,
+        y: touch.clientY - imagePosition.y
+      });
+      e.preventDefault();
+    }
+  };
+
+  const handleTouchMove = (e) => {
+    if (isDragging && e.touches.length === 1) {
+      const touch = e.touches[0];
+      setImagePosition({
+        x: touch.clientX - dragStart.x,
+        y: touch.clientY - dragStart.y
+      });
+      e.preventDefault();
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+  };
+
+  // 处理滚轮缩放
+  const handleWheel = (e) => {
+    if (showImagePreview) {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? 0.9 : 1.1;
+      setImageScale(prev => Math.min(Math.max(prev * delta, 0.5), 3));
+    }
+  };
+
+  // 添加全局事件监听
+  useEffect(() => {
+    if (showImagePreview) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.addEventListener('touchmove', handleTouchMove, { passive: false });
+      document.addEventListener('touchend', handleTouchEnd);
+      document.addEventListener('wheel', handleWheel, { passive: false });
+      
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+        document.removeEventListener('touchmove', handleTouchMove);
+        document.removeEventListener('touchend', handleTouchEnd);
+        document.removeEventListener('wheel', handleWheel);
+      };
+    }
+  }, [showImagePreview, isDragging, dragStart, imagePosition]);
+
+  // 重置图片位置和缩放
+  const resetImageView = () => {
+    setImagePosition({ x: 0, y: 0 });
+    setImageScale(1);
+  };
 
   if (!resolvedParams) {
     return (
@@ -201,27 +296,94 @@ export default function TitlePage({ params }) {
       {/* 图片预览模态框 */}
       {showImagePreview && info.image && !imageError && (
         <div 
-          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
-          onClick={() => setShowImagePreview(false)}
+          className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 cursor-grab select-none"
+          style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowImagePreview(false);
+            }
+          }}
+          onMouseDown={handleMouseDown}
+          onTouchStart={handleTouchStart}
         >
-          <div className="relative max-w-4xl max-h-full">
+          <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
             <img
+              ref={imageRef}
               src={info.image}
               alt={decodedName}
-              className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+              className="max-w-none transition-transform duration-200"
+              style={{
+                transform: `translate(${imagePosition.x}px, ${imagePosition.y}px) scale(${imageScale})`,
+                cursor: isDragging ? 'grabbing' : 'grab'
+              }}
               onClick={(e) => e.stopPropagation()}
+              onMouseDown={handleMouseDown}
+              onTouchStart={handleTouchStart}
+              draggable={false}
             />
-            <button
-              onClick={() => setShowImagePreview(false)}
-              className="absolute top-4 right-4 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors"
-            >
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/50 text-white px-3 py-1 rounded-lg text-sm">
-              ESC键或点击背景关闭
+            
+            {/* 控制按钮组 */}
+            <div className="absolute top-4 right-4 flex space-x-2">
+              {/* 缩放按钮 */}
+              <button
+                onClick={() => setImageScale(prev => Math.min(prev * 1.2, 3))}
+                className="bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors backdrop-blur-sm"
+                title="放大"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+              </button>
+              
+              <button
+                onClick={() => setImageScale(prev => Math.max(prev * 0.8, 0.5))}
+                className="bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors backdrop-blur-sm"
+                title="缩小"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 12H6" />
+                </svg>
+              </button>
+              
+              {/* 重置按钮 */}
+              <button
+                onClick={resetImageView}
+                className="bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors backdrop-blur-sm"
+                title="重置位置和缩放"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+              
+              {/* 关闭按钮 */}
+              <button
+                onClick={() => setShowImagePreview(false)}
+                className="bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors backdrop-blur-sm"
+                title="关闭预览"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
+            
+            {/* 操作提示 */}
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/50 text-white px-4 py-2 rounded-lg text-sm backdrop-blur-sm">
+              <div className="flex items-center space-x-4 text-xs">
+                <span className="hidden md:inline">🖱️ 拖动移动</span>
+                <span className="hidden md:inline">🔍 滚轮缩放</span>
+                <span className="md:hidden">👆 拖动移动</span>
+                <span>ESC 关闭</span>
+              </div>
+            </div>
+            
+            {/* 缩放指示器 */}
+            {imageScale !== 1 && (
+              <div className="absolute top-4 left-4 bg-black/50 text-white px-3 py-1 rounded-lg text-sm backdrop-blur-sm">
+                {Math.round(imageScale * 100)}%
+              </div>
+            )}
           </div>
         </div>
       )}
