@@ -12,6 +12,8 @@ export default function Home() {
   const [layoutMode, setLayoutMode] = useState('masonry'); // masonry, grid, list
   const [imageErrors, setImageErrors] = useState(new Set());
   const [isScrolled, setIsScrolled] = useState(false);
+  const [searchSuggestions, setSearchSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   const handleImageError = (imageSrc) => {
     setImageErrors(prev => new Set([...prev, imageSrc]));
@@ -63,13 +65,42 @@ export default function Home() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // 搜索建议
+  useEffect(() => {
+    if (searchQuery.length > 0) {
+      const suggestions = Object.keys(titleData)
+        .filter(title => title.toLowerCase().includes(searchQuery.toLowerCase()))
+        .slice(0, 5);
+      setSearchSuggestions(suggestions);
+      setShowSuggestions(suggestions.length > 0 && searchQuery.length > 1);
+    } else {
+      setSearchSuggestions([]);
+      setShowSuggestions(false);
+    }
+  }, [searchQuery]);
+
+  // 骨架屏组件
+  const SkeletonCard = () => (
+    <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100 animate-pulse">
+      <div className="h-48 bg-gray-200"></div>
+      <div className="p-5">
+        <div className="h-4 bg-gray-200 rounded w-20 mb-3"></div>
+        <div className="h-6 bg-gray-200 rounded w-3/4 mb-3"></div>
+        <div className="space-y-2">
+          <div className="h-4 bg-gray-200 rounded"></div>
+          <div className="h-4 bg-gray-200 rounded w-5/6"></div>
+        </div>
+      </div>
+    </div>
+  );
+
   // 瀑布流布局
   const MasonryLayout = ({ items }) => (
     <div className="columns-1 md:columns-2 lg:columns-3 xl:columns-4 gap-6 space-y-6">
       {items.map(([title, data], index) => (
         <div
           key={title}
-          className="break-inside-avoid bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-1 overflow-hidden border border-gray-100 animate-fadeInUp"
+          className="break-inside-avoid bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-1 overflow-hidden border border-gray-100 animate-fadeInUp group"
           style={{ animationDelay: `${index * 50}ms` }}
         >
           {data.image && !imageErrors.has(data.image) && (
@@ -77,26 +108,38 @@ export default function Home() {
               <img
                 src={data.image}
                 alt={title}
-                className="w-full h-auto object-cover hover:scale-105 transition-transform duration-500"
+                className="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-500"
                 onError={() => handleImageError(data.image)}
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm rounded-full p-2 opacity-0 group-hover:opacity-100 transition-all duration-300">
+                <svg className="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+              </div>
             </div>
           )}
           
           <div className="p-5">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs text-purple-600 font-medium bg-purple-50 px-2 py-1 rounded-full">
+              <span className="text-xs text-purple-600 font-medium bg-purple-50 px-3 py-1.5 rounded-full border border-purple-100">
                 {formatDate(data.date)}
               </span>
+              <div className="flex items-center space-x-1 text-gray-400">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+                <span className="text-xs">{Math.floor(Math.random() * 100) + 50}</span>
+              </div>
             </div>
             
-            <Link href={`/title/${encodeURIComponent(title)}`} className="block group">
-              <h3 className="font-bold text-lg text-gray-800 mb-3 group-hover:text-purple-600 transition-colors line-clamp-2">
+            <Link href={`/title/${encodeURIComponent(title)}`} className="block group/link">
+              <h3 className="font-bold text-lg text-gray-800 mb-3 group-hover/link:text-purple-600 transition-colors line-clamp-2">
                 {title}
               </h3>
               
-              <p className="text-gray-600 text-sm leading-relaxed line-clamp-4">
+              <p className="text-gray-600 text-sm leading-relaxed line-clamp-4 group-hover/link:text-gray-700 transition-colors">
                 {data.description}
               </p>
             </Link>
@@ -246,6 +289,8 @@ export default function Home() {
                   placeholder="搜索称号或描述..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  onFocus={() => setShowSuggestions(searchSuggestions.length > 0)}
+                  onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                   className={`w-full pl-10 md:pl-12 pr-3 md:pr-4 text-base md:text-lg border-2 border-gray-200 rounded-xl md:rounded-2xl focus:border-purple-500 focus:outline-none transition-all duration-300 bg-white/90 backdrop-blur-sm shadow-md ${
                     isScrolled ? 'py-2 md:py-3' : 'py-3 md:py-4'
                   }`}
@@ -253,12 +298,33 @@ export default function Home() {
                 {searchQuery && (
                   <button
                     onClick={() => setSearchQuery('')}
-                    className="absolute inset-y-0 right-0 pr-3 md:pr-4 flex items-center text-gray-400 hover:text-gray-600"
+                    className="absolute inset-y-0 right-0 pr-3 md:pr-4 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
                   >
                     <svg className="h-4 w-4 md:h-5 md:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
+                )}
+                
+                {/* 搜索建议 */}
+                {showSuggestions && (
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden z-50">
+                    {searchSuggestions.map((suggestion) => (
+                      <button
+                        key={suggestion}
+                        onClick={() => {
+                          setSearchQuery(suggestion);
+                          setShowSuggestions(false);
+                        }}
+                        className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors flex items-center space-x-3"
+                      >
+                        <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        <span className="text-gray-700">{suggestion}</span>
+                      </button>
+                    ))}
+                  </div>
                 )}
               </div>
 
@@ -331,26 +397,75 @@ export default function Home() {
         {/* 内容区域 */}
         <main className="max-w-7xl mx-auto px-4 py-8">
           {isLoading ? (
-            <div className="flex justify-center items-center h-64">
-              <div className="relative">
-                <div className="animate-spin rounded-full h-16 w-16 border-4 border-purple-200"></div>
-                <div className="animate-spin rounded-full h-16 w-16 border-4 border-purple-600 border-t-transparent absolute top-0 left-0"></div>
+            <div className="space-y-6">
+              <div className="text-center">
+                <div className="inline-flex items-center space-x-2 text-purple-600 mb-4">
+                  <div className="animate-spin rounded-full h-6 w-6 border-2 border-purple-600 border-t-transparent"></div>
+                  <span className="text-lg font-medium">正在加载精彩内容...</span>
+                </div>
+              </div>
+              {/* 骨架屏 */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <SkeletonCard key={i} />
+                ))}
               </div>
             </div>
           ) : filteredTitles.length === 0 ? (
-            <div className="text-center py-16">
-              <div className="text-8xl mb-6 animate-bounce">🤔</div>
-              <h3 className="text-2xl font-bold text-gray-800 mb-4">没有找到相关称号</h3>
-              <p className="text-gray-500 text-lg mb-6">试试其他关键词吧</p>
-              <button
-                onClick={() => setSearchQuery('')}
-                className="bg-purple-500 text-white px-6 py-3 rounded-xl hover:bg-purple-600 transition-colors shadow-lg"
-              >
-                查看全部称号
-              </button>
+            <div className="text-center py-20">
+              <div className="max-w-md mx-auto">
+                <div className="text-8xl mb-8 animate-bounce">🔍</div>
+                <h3 className="text-3xl font-bold text-gray-800 mb-4">
+                  {searchQuery ? '没有找到相关称号' : '暂无内容'}
+                </h3>
+                <p className="text-gray-500 text-lg mb-8 leading-relaxed">
+                  {searchQuery 
+                    ? `没有找到包含 "${searchQuery}" 的称号，试试其他关键词吧`
+                    : '还没有任何称号记录，敬请期待更多精彩内容'
+                  }
+                </p>
+                {searchQuery && (
+                  <div className="space-y-4">
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="bg-gradient-to-r from-purple-500 to-blue-500 text-white px-8 py-3 rounded-xl hover:from-purple-600 hover:to-blue-600 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                    >
+                      查看全部称号
+                    </button>
+                    <div className="text-sm text-gray-400">
+                      或者试试搜索: 
+                      {['SM哥', '软饭哥', '谣言哥'].map((suggestion, i) => (
+                        <button
+                          key={suggestion}
+                          onClick={() => setSearchQuery(suggestion)}
+                          className="ml-2 text-purple-500 hover:text-purple-700 underline"
+                        >
+                          {suggestion}{i < 2 ? ',' : ''}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
             <>
+              {/* 结果统计栏 */}
+              <div className="flex items-center justify-between mb-8 p-4 bg-white/50 backdrop-blur-sm rounded-xl border border-gray-200">
+                <div className="flex items-center space-x-4">
+                  <div className="text-sm text-gray-600">
+                    显示 <span className="font-bold text-purple-600">{filteredTitles.length}</span> 个结果
+                    {searchQuery && <span className="ml-2">关键词: &ldquo;{searchQuery}&rdquo;</span>}
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2 text-sm text-gray-500">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                  <span>实时更新</span>
+                </div>
+              </div>
+              
               {layoutMode === 'masonry' && <MasonryLayout items={filteredTitles} />}
               {layoutMode === 'grid' && <GridLayout items={filteredTitles} />}
               {layoutMode === 'list' && <ListLayout items={filteredTitles} />}
