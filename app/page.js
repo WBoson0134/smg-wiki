@@ -16,27 +16,13 @@ export default function Home() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const [imageLoadingStates, setImageLoadingStates] = useState(new Set());
 
   const handleImageError = (imageSrc) => {
     setImageErrors(prev => new Set([...prev, imageSrc]));
-    setImageLoadingStates(prev => {
-      const newSet = new Set(prev);
-      newSet.delete(imageSrc);
-      return newSet;
-    });
   };
 
   const handleImageLoad = (imageSrc) => {
-    setImageLoadingStates(prev => {
-      const newSet = new Set(prev);
-      newSet.delete(imageSrc);
-      return newSet;
-    });
-  };
-
-  const handleImageLoadStart = (imageSrc) => {
-    setImageLoadingStates(prev => new Set([...prev, imageSrc]));
+    // 图片加载完成，可以在这里做一些处理
   };
 
   const formatDate = (dateString) => {
@@ -60,7 +46,12 @@ export default function Home() {
         results = results.sort((a, b) => a[0].localeCompare(b[0]));
         break;
       case 'random':
-        results = results.sort(() => Math.random() - 0.5);
+        // 使用稳定的随机种子，避免频繁重排
+        results = results.sort((a, b) => {
+          const seedA = a[0].charCodeAt(0) + a[0].length;
+          const seedB = b[0].charCodeAt(0) + b[0].length;
+          return Math.sin(seedA) - Math.sin(seedB);
+        });
         break;
       default:
         break;
@@ -68,6 +59,17 @@ export default function Home() {
     
     return results;
   }, [searchQuery, sortBy]);
+
+  // 生成稳定的模拟浏览量
+  const getViewCount = (title) => {
+    let hash = 0;
+    for (let i = 0; i < title.length; i++) {
+      const char = title.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32bit integer
+    }
+    return Math.abs(hash % 100) + 50;
+  };
 
   useEffect(() => {
     setFilteredTitles(processedTitles);
@@ -140,28 +142,36 @@ export default function Home() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // 懒加载图片组件
+  // 懒加载图片组件 - 优化版本，避免频繁重新渲染
   const LazyImage = ({ src, alt, className, onError, onLoad }) => {
     const [isLoaded, setIsLoaded] = useState(false);
     const [isInView, setIsInView] = useState(false);
+    const [hasError, setHasError] = useState(false);
     const imgRef = useRef();
+    const observerRef = useRef();
 
     useEffect(() => {
-      const observer = new IntersectionObserver(
+      // 避免重复创建observer
+      if (observerRef.current) return;
+      
+      observerRef.current = new IntersectionObserver(
         ([entry]) => {
           if (entry.isIntersecting) {
             setIsInView(true);
-            observer.disconnect();
+            observerRef.current?.disconnect();
           }
         },
-        { threshold: 0.1 }
+        { threshold: 0.1, rootMargin: '50px' }
       );
 
       if (imgRef.current) {
-        observer.observe(imgRef.current);
+        observerRef.current.observe(imgRef.current);
       }
 
-      return () => observer.disconnect();
+      return () => {
+        observerRef.current?.disconnect();
+        observerRef.current = null;
+      };
     }, []);
 
     const handleLoad = () => {
@@ -171,29 +181,39 @@ export default function Home() {
 
     const handleError = () => {
       setIsLoaded(true);
+      setHasError(true);
       onError?.(src);
     };
 
     return (
-      <div ref={imgRef} className={`relative ${className}`}>
-        {isInView && (
+      <div ref={imgRef} className={className}>
+        {isInView && !hasError && (
           <>
             {!isLoaded && (
-              <div className="absolute inset-0 bg-gray-200 animate-pulse flex items-center justify-center">
-                <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
+              <div className="absolute inset-0 bg-gray-200 flex items-center justify-center">
+                <div className="w-8 h-8 border-2 border-gray-300 border-t-purple-500 rounded-full animate-spin"></div>
               </div>
             )}
             <img
               src={src}
               alt={alt}
-              className={`${className} transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
+              className={`w-full h-auto object-cover group-hover:scale-105 transition-transform duration-500 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
               onLoad={handleLoad}
               onError={handleError}
               loading="lazy"
+              style={{ transition: 'opacity 0.3s ease-in-out' }}
             />
           </>
+        )}
+        {hasError && (
+          <div className="w-full h-48 bg-gray-100 flex items-center justify-center">
+            <div className="text-center text-gray-400">
+              <svg className="w-12 h-12 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <span className="text-sm">图片加载失败</span>
+            </div>
+          </div>
         )}
       </div>
     );
@@ -249,7 +269,7 @@ export default function Home() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                 </svg>
-                <span className="text-xs">{Math.floor(Math.random() * 100) + 50}</span>
+                <span className="text-xs">{getViewCount(title)}</span>
               </div>
             </div>
             
